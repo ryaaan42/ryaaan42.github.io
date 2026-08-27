@@ -7,6 +7,8 @@ const STORAGE_KEY = "declic-admin-session";
 const SECTIONS = [
   ["overview", "Vue d’ensemble"],
   ["queue", "Signalements"],
+  ["explorer", "Communauté"],
+  ["members", "Comptes"],
   ["held", "Retenus"],
   ["suspensions", "Suspendus"],
   ["history", "Journal"],
@@ -22,6 +24,17 @@ const ACTION_LABELS = {
   dismiss_report: "Laissé en ligne",
   resolve_report: "Clôturé",
   warn: "Avertissement",
+  lock_community: "Communauté coupée",
+  unlock_community: "Communauté rétablie",
+};
+
+const KIND_LABELS = {
+  today: "Aujourd’hui",
+  craving: "Envie",
+  dailyWin: "Victoire",
+  afterRelapse: "Après une rechute",
+  advice: "Conseil",
+  needSupport: "Besoin de soutien",
 };
 
 const state = {
@@ -36,6 +49,13 @@ const state = {
   history: [],
   notice: { body: "", updated_at: null },
   domains: [],
+  browse: [],
+  browseQuery: "",
+  browseSince: "",
+  browseUntil: "",
+  browseSelected: null,
+  member: null,
+  memberQuery: "",
   query: "",
   selected: null,
   toast: null,
@@ -159,6 +179,7 @@ function frenchError(error) {
     unknown_report: "Ce signalement n’existe plus.",
     unknown_target: "Cette cible n’existe plus.",
     unknown_action: "Cette action n’est pas reconnue.",
+    community_locked: "La communauté est coupée pour ce compte.",
   };
   return map[error.message] || "L’action n’a pas abouti. Réessaie.";
 }
@@ -186,6 +207,10 @@ async function refreshAll() {
     state.history = history || [];
     state.notice = notice || { body: "", updated_at: null };
     state.domains = domains || [];
+    if (state.section === "explorer") await loadBrowse();
+    if (state.section === "members" && (state.member?.username || state.memberQuery)) {
+      await loadMember(state.member?.username || state.memberQuery);
+    }
     state.error = null;
     if (state.selected) {
       state.selected =
@@ -229,6 +254,16 @@ function onSubmit(event) {
     addDomain(new FormData(form).get("domain") || "");
     form.reset();
   }
+  if (form.id === "explorer-form") {
+    const data = new FormData(form);
+    state.browseQuery = String(data.get("query") || "");
+    state.browseSince = String(data.get("since") || "");
+    state.browseUntil = String(data.get("until") || "");
+    loadBrowse();
+  }
+  if (form.id === "member-form") {
+    loadMember(new FormData(form).get("lookup") || "");
+  }
   if (form.id === "dialog-form") {
     confirmDialog(new FormData(form));
   }
@@ -263,7 +298,42 @@ async function handleAction(action, node) {
     if (action === "nav") {
       state.section = node.dataset.section;
       state.selected = null;
+      state.browseSelected = null;
       render();
+      if (state.section === "explorer") await loadBrowse();
+      return;
+    }
+    if (action === "open-member") {
+      await loadMember(node.dataset.username);
+      return;
+    }
+    if (action === "select-browse") {
+      state.browseSelected = state.browse.find((row) => row.target_id === node.dataset.id);
+      render();
+      return;
+    }
+    if (action === "act") {
+      const extra = node.dataset.extra === "suspend";
+      const warnings = Number(node.dataset.warnings || 0);
+      const isWarn = node.dataset.op === "warn";
+      openDialog({
+        title: actTitle(node.dataset.op, warnings),
+        submit: node.dataset.submit || "Confirmer",
+        danger: node.dataset.danger === "true",
+        hint: isWarn && warnings >= 1
+          ? "Ce compte a déjà un avertissement. La suspension est souvent la suite."
+          : "",
+        fields: reasonFields(extra),
+        payload: {
+          op: "act",
+          args: {
+            target_kind: node.dataset.kind,
+            target_id: node.dataset.id,
+            action: node.dataset.op,
+            suspend_days: extra ? 7 : null,
+          },
+        },
+      });
       return;
     }
     if (action === "logout") {
@@ -295,10 +365,14 @@ async function handleAction(action, node) {
       return;
     }
     if (action === "moderate") {
+      const warnings = Number(node.dataset.warnings || 0);
       openDialog({
         title: node.dataset.title,
         submit: node.dataset.submit || "Confirmer",
         danger: node.dataset.danger === "true",
+        hint: node.dataset.op === "warn" && warnings >= 1
+          ? "Ce compte a déjà un avertissement. La suspension est souvent la suite."
+          : "",
         fields: reasonFields(node.dataset.extra === "suspend"),
         payload: {
           op: "moderate",
@@ -581,6 +655,10 @@ function sectionView() {
       return overviewView();
     case "queue":
       return queueView();
+    case "explorer":
+      return explorerView();
+    case "members":
+      return memberView();
     case "held":
       return heldView();
     case "suspensions":
@@ -616,7 +694,7 @@ function overviewView() {
           <div class="row">
             <div>
               <strong>${escapeHtml(ACTION_LABELS[entry.action] || entry.action)}</strong>
-              ${entry.target_username ? ` · @${escapeHtml(entry.target_username)}` : ""}
+              ${entry.target_username ? ` · ${usernameBtn(entry.target_username)}` : ""}
               <div class="meta">${escapeHtml(entry.reason)}</div>
             </div>
             <div class="meta">${escapeHtml(age(entry.acted_at))}</div>
@@ -644,11 +722,16 @@ function queueView() {
           rows.map((row) => `
             <button class="row" data-action="select-report" data-id="${row.report_id}">
               <div>
-                <strong>${escapeHtml(row.author_username ? `@${row.author_username}` : "Compte supprimé")}</strong>
+                <strong>${usernameBtn(row.author_username)}</strong>
                 ${row.author_suspended_until && Date.parse(row.author_suspended_until) > Date.now() ? `<span class="tag danger">Suspendu</span>` : ""}
                 ${row.content_deleted ? `<span class="tag">Masqué</span>` : ""}
+                ${row.author_warning_count ? `<span class="tag">Avertissement ×${row.author_warning_count}</span>` : ""}
                 <div class="meta">${escapeHtml(row.content || "Signalement visant un compte")}</div>
-                <div class="meta">« ${escapeHtml(row.reason)} » · ${escapeHtml(age(row.reported_at))} · ${row.author_report_count || 0} signalement(s)</div>
+                <div class="meta">« ${escapeHtml(row.reason)} » · ${escapeHtml(age(row.reported_at))} · ${row.author_report_count || 0} signalement(s)${
+                  row.reporter_username
+                    ? ` · signalé par ${usernameBtn(row.reporter_username)}`
+                    : ""
+                }</div>
               </div>
             </button>
           `).join("") || `<p class="empty">Rien en attente.</p>`
@@ -662,11 +745,23 @@ function queueView() {
 }
 
 function reportDetail(report) {
+  const warnings = report.author_warning_count || 0;
   return `
-    <h2>${escapeHtml(report.author_username ? `@${report.author_username}` : "Compte")}</h2>
+    <h2>${usernameBtn(report.author_username, "Compte")}</h2>
     <p>${escapeHtml(report.content || "Ce signalement vise un compte, pas un message.")}</p>
     <p class="meta">Motif du signalement : « ${escapeHtml(report.reason)} »</p>
-    <p class="meta">${report.author_report_count || 0} signalement(s) · ${report.author_post_count || 0} message(s) encore en ligne</p>
+    <p class="meta">${
+      report.reporter_username
+        ? `Signalé par ${usernameBtn(report.reporter_username)} · `
+        : ""
+    }${report.author_report_count || 0} signalement(s) · ${report.author_post_count || 0} message(s) encore en ligne${
+      warnings ? ` · ${warnings} avertissement(s)` : ""
+    }</p>
+    ${
+      warnings >= 1
+        ? `<p class="warn">Déjà averti. Un second avertissement, ou une suspension, est souvent plus clair.</p>`
+        : ""
+    }
     <div class="actions">
       ${
         report.content_deleted
@@ -674,7 +769,9 @@ function reportDetail(report) {
           : `<button class="btn danger" data-action="moderate" data-id="${report.report_id}" data-op="hide" data-title="Masquer le contenu" data-submit="Masquer" data-danger="true">Masquer</button>`
       }
       <button class="btn" data-action="moderate" data-id="${report.report_id}" data-op="dismiss_report" data-title="Laisser en ligne" data-submit="Laisser">Laisser en ligne</button>
-      <button class="btn" data-action="moderate" data-id="${report.report_id}" data-op="warn" data-title="Avertir" data-submit="Avertir">Avertir</button>
+      <button class="btn" data-action="moderate" data-id="${report.report_id}" data-op="warn" data-warnings="${warnings}" data-title="${
+        warnings >= 1 ? "Nouveau avertissement" : "Avertir"
+      }" data-submit="Avertir">${warnings >= 1 ? "Avertir encore" : "Avertir"}</button>
       <button class="btn danger" data-action="moderate" data-id="${report.report_id}" data-op="suspend" data-title="Suspendre ce compte" data-submit="Suspendre" data-extra="suspend" data-danger="true">Suspendre</button>
     </div>
   `;
@@ -687,7 +784,7 @@ function heldView() {
         state.held.map((item) => `
           <div class="row">
             <div>
-              <strong>${escapeHtml(item.author_username ? `@${item.author_username}` : "Compte")}</strong>
+              <strong>${usernameBtn(item.author_username)}</strong>
               <div>${escapeHtml(item.content || "")}</div>
               <div class="meta">${escapeHtml(age(item.held_at))} · ${escapeHtml(item.target_kind)}</div>
               <div class="actions">
@@ -709,7 +806,7 @@ function suspensionsView() {
         state.suspensions.map((row) => `
           <div class="row">
             <div>
-              <strong>${escapeHtml(row.username ? `@${row.username}` : row.user_id)}</strong>
+              <strong>${usernameBtn(row.username, row.user_id)}</strong>
               <div class="meta">Jusqu’au ${escapeHtml(new Date(row.suspended_until).toLocaleString("fr-FR"))}</div>
               <div>${escapeHtml(row.reason)}</div>
               <div class="actions">
@@ -737,13 +834,165 @@ function historyView() {
           <div class="row">
             <div>
               <strong>${escapeHtml(ACTION_LABELS[entry.action] || entry.action)}</strong>
-              ${entry.target_username ? ` · @${escapeHtml(entry.target_username)}` : ""}
+              ${entry.target_username ? ` · ${usernameBtn(entry.target_username)}` : ""}
               <div class="meta">${escapeHtml(entry.reason)}</div>
             </div>
             <div class="meta">${escapeHtml(age(entry.acted_at))}</div>
           </div>
         `).join("") || `<p class="empty">Aucune action pour l’instant.</p>`
       }
+    </div>
+  `;
+}
+
+function explorerView() {
+  const selected = state.browseSelected;
+  return `
+    <form class="toolbar" id="explorer-form">
+      <input class="search" name="query" placeholder="Un @, un mot, un bout de message" value="${escapeHtml(state.browseQuery)}" />
+      <input class="search" type="date" name="since" value="${escapeHtml(state.browseSince)}" aria-label="Depuis" />
+      <input class="search" type="date" name="until" value="${escapeHtml(state.browseUntil)}" aria-label="Jusqu’au" />
+      <button class="btn brand" type="submit">Chercher</button>
+    </form>
+    <div class="layout-split">
+      <div class="panel">
+        ${
+          state.browse.map((row) => `
+            <button class="row" data-action="select-browse" data-id="${row.target_id}">
+              <div>
+                <strong>${usernameBtn(row.author_username)}</strong>
+                <span class="tag">${escapeHtml(row.target_kind === "comment" ? "Commentaire" : KIND_LABELS[row.post_kind] || "Message")}</span>
+                ${row.is_deleted ? `<span class="tag">Masqué</span>` : ""}
+                ${row.author_warning_count ? `<span class="tag">Avertissement ×${row.author_warning_count}</span>` : ""}
+                <div class="meta">${escapeHtml(row.content)}</div>
+                <div class="meta">${escapeHtml(age(row.created_at))}</div>
+              </div>
+            </button>
+          `).join("") || `<p class="empty">Rien à parcourir pour cette recherche.</p>`
+        }
+      </div>
+      <div class="panel">
+        ${selected ? browseDetail(selected) : `<p class="empty">Choisis un message pour agir, sans attendre un signalement.</p>`}
+      </div>
+    </div>
+  `;
+}
+
+function browseDetail(row) {
+  const warnings = row.author_warning_count || 0;
+  return `
+    <h2>${usernameBtn(row.author_username)}</h2>
+    <p>${escapeHtml(row.content)}</p>
+    <p class="meta">${escapeHtml(row.target_kind === "comment" ? "Commentaire" : KIND_LABELS[row.post_kind] || "Message")} · ${escapeHtml(age(row.created_at))}${
+      warnings ? ` · ${warnings} avertissement(s)` : ""
+    }</p>
+    ${
+      warnings >= 1
+        ? `<p class="warn">Déjà averti. Un second avertissement, ou une suspension, est souvent plus clair.</p>`
+        : ""
+    }
+    <div class="actions">
+      ${
+        row.is_deleted
+          ? `<button class="btn" data-action="act" data-kind="${row.target_kind}" data-id="${row.target_id}" data-op="restore" data-submit="Rétablir">Rétablir</button>`
+          : `<button class="btn danger" data-action="act" data-kind="${row.target_kind}" data-id="${row.target_id}" data-op="hide" data-submit="Masquer" data-danger="true">Masquer</button>`
+      }
+      <button class="btn" data-action="act" data-kind="${row.target_kind}" data-id="${row.target_id}" data-op="warn" data-warnings="${warnings}" data-submit="Avertir">${
+        warnings >= 1 ? "Avertir encore" : "Avertir"
+      }</button>
+      <button class="btn danger" data-action="act" data-kind="${row.target_kind}" data-id="${row.target_id}" data-op="suspend" data-extra="suspend" data-submit="Suspendre" data-danger="true">Suspendre</button>
+    </div>
+  `;
+}
+
+function memberView() {
+  const card = state.member;
+  return `
+    <form class="toolbar" id="member-form">
+      <input class="search" name="lookup" placeholder="@username" value="${escapeHtml(state.memberQuery)}" />
+      <button class="btn brand" type="submit">Ouvrir</button>
+    </form>
+    ${card ? memberCard(card) : `<p class="empty">Cherche un compte par son @. Rien de privé : pas d’urgences, pas d’argent, pas de protection.</p>`}
+  `;
+}
+
+function memberCard(card) {
+  const locked = card.community_locked;
+  const suspended = card.suspended_until && Date.parse(card.suspended_until) > Date.now();
+  const warnings = card.warning_count || 0;
+  return `
+    <div class="panel stack">
+      <h2>${usernameBtn(card.username)}</h2>
+      ${card.bio ? `<p>${escapeHtml(card.bio)}</p>` : ""}
+      <p class="meta">
+        ${card.post_count || 0} message(s) · ${card.comment_count || 0} commentaire(s) · ${card.report_count || 0} signalement(s) · ${warnings} avertissement(s)
+      </p>
+      <p class="meta">
+        Communauté : ${locked ? "coupée" : card.community_enabled ? "ouverte" : "off"}
+        ${suspended ? ` · suspendu jusqu’au ${escapeHtml(new Date(card.suspended_until).toLocaleString("fr-FR"))}` : ""}
+      </p>
+      ${locked && card.community_lock_reason ? `<p class="warn">Coupure : ${escapeHtml(card.community_lock_reason)}</p>` : ""}
+      ${warnings >= 1 ? `<p class="warn">Déjà averti. La suspension est souvent la suite.</p>` : ""}
+      <div class="actions">
+        <button class="btn" data-action="act" data-kind="user" data-id="${card.user_id}" data-op="warn" data-warnings="${warnings}" data-submit="Avertir">${
+          warnings >= 1 ? "Avertir encore" : "Avertir"
+        }</button>
+        <button class="btn danger" data-action="act" data-kind="user" data-id="${card.user_id}" data-op="suspend" data-extra="suspend" data-submit="Suspendre" data-danger="true">Suspendre</button>
+        ${
+          locked
+            ? `<button class="btn" data-action="act" data-kind="user" data-id="${card.user_id}" data-op="unlock_community" data-submit="Rétablir">Rétablir la communauté</button>`
+            : `<button class="btn danger" data-action="act" data-kind="user" data-id="${card.user_id}" data-op="lock_community" data-submit="Couper" data-danger="true">Couper la communauté</button>`
+        }
+      </div>
+    </div>
+    <div class="layout-split" style="margin-top:18px">
+      <div class="panel">
+        <h2>Messages</h2>
+        ${
+          (card.posts || []).map((post) => `
+            <div class="row">
+              <div>
+                <span class="tag">${escapeHtml(KIND_LABELS[post.kind] || post.kind)}</span>
+                ${post.is_deleted ? `<span class="tag">Masqué</span>` : ""}
+                <div>${escapeHtml(post.body)}</div>
+                <div class="meta">${escapeHtml(age(post.created_at))}</div>
+                <div class="actions">
+                  ${
+                    post.is_deleted
+                      ? `<button class="btn" data-action="act" data-kind="post" data-id="${post.id}" data-op="restore" data-submit="Rétablir">Rétablir</button>`
+                      : `<button class="btn danger" data-action="act" data-kind="post" data-id="${post.id}" data-op="hide" data-submit="Masquer" data-danger="true">Masquer</button>`
+                  }
+                </div>
+              </div>
+            </div>
+          `).join("") || `<p class="empty">Aucun message.</p>`
+        }
+      </div>
+      <div class="panel">
+        <h2>Signalements reçus</h2>
+        ${
+          (card.reports || []).map((report) => `
+            <div class="row">
+              <div>
+                <strong>${escapeHtml(report.status)}</strong>
+                ${report.reporter_username ? ` · par ${usernameBtn(report.reporter_username)}` : ""}
+                <div class="meta">« ${escapeHtml(report.reason)} » · ${escapeHtml(age(report.created_at))}</div>
+              </div>
+            </div>
+          `).join("") || `<p class="empty">Aucun signalement.</p>`
+        }
+        <h2 style="margin-top:22px">Avertissements</h2>
+        ${
+          (card.warnings || []).map((warning) => `
+            <div class="row">
+              <div>
+                <div>${escapeHtml(warning.reason)}</div>
+                <div class="meta">${escapeHtml(age(warning.created_at))}</div>
+              </div>
+            </div>
+          `).join("") || `<p class="empty">Aucun avertissement.</p>`
+        }
+      </div>
     </div>
   `;
 }
@@ -793,6 +1042,7 @@ function dialogView() {
     <div class="dialog-backdrop">
       <form class="dialog stack" id="dialog-form">
         <h2>${escapeHtml(dialog.title)}</h2>
+        ${dialog.hint ? `<p class="warn">${escapeHtml(dialog.hint)}</p>` : ""}
         ${dialog.fields.map((field) => field.type === "number"
           ? `<label class="muted">${escapeHtml(field.label)}<input class="field" type="number" min="1" max="365" name="${field.name}" value="${field.value || ""}" required /></label>`
           : `<label class="muted">${escapeHtml(field.label)}<textarea class="field" name="${field.name}" rows="3" placeholder="${escapeHtml(field.placeholder || "")}" required></textarea></label>`
@@ -804,6 +1054,64 @@ function dialogView() {
       </form>
     </div>
   `;
+}
+
+function usernameBtn(name, fallback = "Compte") {
+  const lookup = name || null;
+  if (!lookup) return escapeHtml(fallback);
+  return `<span class="username" data-action="open-member" data-username="${escapeHtml(lookup)}">@${escapeHtml(lookup)}</span>`;
+}
+
+function actTitle(op, warnings) {
+  if (op === "warn") return warnings >= 1 ? "Nouveau avertissement" : "Avertir";
+  if (op === "hide") return "Masquer ce contenu";
+  if (op === "restore") return "Rétablir ce contenu";
+  if (op === "suspend") return "Suspendre ce compte";
+  if (op === "lock_community") return "Couper la communauté";
+  if (op === "unlock_community") return "Rétablir la communauté";
+  return "Confirmer";
+}
+
+async function loadBrowse() {
+  state.loading = true;
+  render();
+  try {
+    state.browse = (await rpc("browse", {
+      query: state.browseQuery,
+      since: state.browseSince,
+      until_date: state.browseUntil,
+      max_rows: 200,
+    })) || [];
+    if (state.browseSelected) {
+      state.browseSelected =
+        state.browse.find((row) => row.target_id === state.browseSelected.target_id) || null;
+    }
+    state.error = null;
+  } catch (error) {
+    state.error = frenchError(error);
+  } finally {
+    state.loading = false;
+    render();
+  }
+}
+
+async function loadMember(lookup) {
+  const needle = String(lookup || "").trim();
+  state.memberQuery = needle.replace(/^@/, "");
+  if (!state.memberQuery) return;
+  state.section = "members";
+  state.loading = true;
+  render();
+  try {
+    state.member = await rpc("member", { lookup: state.memberQuery });
+    state.error = null;
+  } catch (error) {
+    state.member = null;
+    state.error = frenchError(error);
+  } finally {
+    state.loading = false;
+    render();
+  }
 }
 
 function escapeHtml(value) {

@@ -321,6 +321,22 @@ a {
   color: var(--danger);
 }
 
+.username {
+  color: var(--brand);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.username:hover {
+  text-decoration: underline;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .layout-split {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
