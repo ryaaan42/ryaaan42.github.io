@@ -3,18 +3,22 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Déclic — L’envie n’est pas un ordre</title>
+    <title>Déclic — Arrête de jouer aux jeux d’argent sur iPhone</title>
     <meta
       name="description"
-      content="Déclic bloque les apps et sites de jeu, t’accompagne quand l’envie monte et rend visible ce que tu récupères. Bientôt sur iPhone."
+      content="Déclic t’aide à arrêter les paris et les jeux d’argent sur iPhone. Bloque apps et sites, traverse les envies, suis tes jours repris. Bientôt sur l’App Store."
     >
+    <meta name="robots" content="index,follow,max-image-preview:large">
+    <meta name="author" content="Ryan Incorvaia">
     <meta name="apple-itunes-app" content="app-id=6802540340">
     <link rel="canonical" href="https://declicapp.fr/">
+    <link rel="manifest" href="site.webmanifest">
+    <link rel="sitemap" type="application/xml" href="https://declicapp.fr/sitemap.xml">
 
     <meta property="og:title" content="Déclic — Le jeu s’arrête ici">
     <meta
       property="og:description"
-      content="L’allié face au jeu, sur iPhone."
+      content="Bloque les apps et sites de jeu, traverse les envies, retrouve le contrôle. L’allié face au jeu, sur iPhone."
     >
     <meta property="og:image" content="https://declicapp.fr/assets/og.jpg">
     <meta property="og:image:width" content="1200">
@@ -26,11 +30,16 @@
     <meta property="og:site_name" content="Déclic">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Déclic — Le jeu s’arrête ici">
-    <meta name="twitter:description" content="L’allié face au jeu, sur iPhone.">
+    <meta
+      name="twitter:description"
+      content="Bloque les apps et sites de jeu, traverse les envies, retrouve le contrôle. L’allié face au jeu, sur iPhone."
+    >
     <meta name="twitter:image" content="https://declicapp.fr/assets/og.jpg">
     <meta name="twitter:image:alt" content="Déclic — Le jeu s’arrête ici.">
+    <meta name="twitter:url" content="https://declicapp.fr/">
 
     <meta name="theme-color" content="#080808">
+    <meta name="color-scheme" content="dark">
     <link rel="icon" href="assets/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="assets/favicon.png" sizes="32x32">
     <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -54,19 +63,138 @@
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        "name": "Déclic",
-        "operatingSystem": "iOS",
-        "applicationCategory": "LifestyleApplication",
-        "description": "Une app iPhone pour bloquer l’accès aux jeux d’argent, traverser les envies et suivre sa progression.",
-        "url": "https://declicapp.fr/",
-        "downloadUrl": "https://apps.apple.com/fr/app/id6802540340"
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://declicapp.fr/#organization",
+            "name": "Déclic",
+            "url": "https://declicapp.fr/",
+            "email": "incorvaia.p@hotmail.com",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://declicapp.fr/assets/app-icon.png"
+            },
+            "founder": {
+              "@type": "Person",
+              "name": "Ryan Incorvaia"
+            }
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://declicapp.fr/#website",
+            "url": "https://declicapp.fr/",
+            "name": "Déclic",
+            "inLanguage": "fr-FR",
+            "publisher": { "@id": "https://declicapp.fr/#organization" }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://declicapp.fr/#app",
+            "name": "Déclic",
+            "alternateName": "Declic - Arrête de jouer",
+            "applicationCategory": "LifestyleApplication",
+            "operatingSystem": "iOS",
+            "inLanguage": "fr-FR",
+            "description": "Une app iPhone pour bloquer l’accès aux jeux d’argent, traverser les envies et suivre sa progression.",
+            "url": "https://declicapp.fr/",
+            "image": "https://declicapp.fr/assets/og.jpg",
+            "screenshot": [
+              "https://declicapp.fr/assets/device-protection.png",
+              "https://declicapp.fr/assets/device-urge.png"
+            ],
+            "downloadUrl": "https://apps.apple.com/fr/app/id6802540340",
+            "installUrl": "https://apps.apple.com/fr/app/id6802540340",
+            "author": { "@id": "https://declicapp.fr/#organization" },
+            "publisher": { "@id": "https://declicapp.fr/#organization" },
+            "offers": {
+              "@type": "Offer",
+              "url": "https://apps.apple.com/fr/app/id6802540340",
+              "priceCurrency": "EUR",
+              "availability": "https://schema.org/PreOrder"
+            }
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://declicapp.fr/#faq",
+            "inLanguage": "fr-FR",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Déclic peut-il bloquer les sites et apps de paris ?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Oui. Déclic coupe des milliers de sites de jeu dans Safari et bloque les apps de paris via Temps d’écran d’Apple. Tu choisis ce qui est protégé. Tes choix restent sur ton iPhone."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Comment arrêter la protection ?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Une fois activée, la protection reste en place. Pour l’arrêter, une attente de 48 heures commence. Tu peux aussi demander l’accord d’un proche de confiance."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Déclic est-il un traitement médical ?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Non. Déclic est un outil de blocage et de soutien. Ce n’est pas un dispositif médical, ni un substitut à un accompagnement professionnel."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Mes données de jeu restent-elles privées ?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Les apps, catégories et sites que tu bloques restent sur ton iPhone. Déclic ne vend pas tes données et ne fait pas de publicité ciblée."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Quand Déclic sera-t-il disponible ?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Déclic arrive bientôt sur l’App Store, pour iPhone. Tu peux déjà ouvrir la fiche de l’app et t’y préparer."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Que faire si l’envie est trop forte maintenant ?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Joueurs Info Service répond au 09 74 75 13 13, tous les jours de 8 h à 2 h. En cas d’idées suicidaires, le 3114 répond 24 h/24. En danger immédiat, le 15 ou le 112."
+                }
+              }
+            ]
+          }
+        ]
       }
     </script>
   </head>
   <body>
     <a class="skip-link" href="#contenu">Aller au contenu</a>
     <div class="timeline" aria-hidden="true"><span></span></div>
+
+    <header class="site-nav">
+      <div class="site-nav-inner">
+        <a class="brand" href="/" aria-label="Déclic, accueil">
+          <picture>
+            <source srcset="assets/logo.webp" type="image/webp">
+            <img src="assets/logo.png" width="620" height="174" alt="">
+          </picture>
+        </a>
+        <nav aria-label="Navigation principale">
+          <a href="#protection">Protection</a>
+          <a href="#envie">L’envie</a>
+          <a href="#faq">Questions</a>
+          <a href="support.html">Aide</a>
+          <a class="nav-cta" href="https://apps.apple.com/fr/app/id6802540340">
+            App Store
+          </a>
+        </nav>
+      </div>
+    </header>
 
     <section class="hero">
       <picture>
@@ -80,23 +208,6 @@
           fetchpriority="high"
         >
       </picture>
-
-      <header class="hero-nav">
-        <a class="brand" href="/" aria-label="Déclic, accueil">
-          <picture>
-            <source srcset="assets/logo.webp" type="image/webp">
-            <img src="assets/logo.png" width="620" height="174" alt="">
-          </picture>
-        </a>
-        <nav aria-label="Navigation principale">
-          <a href="#protection">Protection</a>
-          <a href="#envie">L’envie</a>
-          <a href="support.html">Aide</a>
-          <a class="nav-cta" href="https://apps.apple.com/fr/app/id6802540340">
-            App Store
-          </a>
-        </nav>
-      </header>
 
       <div class="hero-copy">
         <p class="eyebrow"><span aria-hidden="true"></span> Ton allié face au jeu</p>
@@ -121,6 +232,15 @@
     </section>
 
     <main id="contenu">
+      <section class="proof" aria-label="Ce que Déclic met en place">
+        <div class="shell proof-row">
+          <p><strong>Safari</strong><span>Sites de jeu coupés</span></p>
+          <p><strong>Temps d’écran</strong><span>Apps de paris bloquées</span></p>
+          <p><strong>48 heures</strong><span>Avant d’arrêter la protection</span></p>
+          <p><strong>France</strong><span>Conçu ici, pour toi</span></p>
+        </div>
+      </section>
+
       <section class="manifesto section-dark">
         <div class="shell manifesto-grid">
           <p class="scene-time reveal">00:01 — LE DÉCLIC</p>
@@ -280,6 +400,72 @@
         </div>
       </section>
 
+      <section class="faq-section" id="faq">
+        <div class="shell faq-grid">
+          <div class="faq-heading reveal">
+            <p class="act-index">05 <span>/</span> QUESTIONS</p>
+            <h2>Les réponses<br><em>sans détour.</em></h2>
+            <p>
+              Blocage, délai, données, aide. Si tu ne trouves pas ce que tu cherches,
+              écris-nous.
+            </p>
+          </div>
+
+          <div class="faq-list">
+            <details class="faq-item reveal" open>
+              <summary>Déclic peut-il bloquer les sites et apps de paris&nbsp;?</summary>
+              <p>
+                Oui. Déclic coupe des milliers de sites de jeu dans Safari et bloque
+                les apps de paris via Temps d’écran d’Apple. Tu choisis ce qui est
+                protégé. Tes choix restent sur ton iPhone.
+              </p>
+            </details>
+            <details class="faq-item reveal">
+              <summary>Comment arrêter la protection&nbsp;?</summary>
+              <p>
+                Une fois activée, la protection reste en place. Pour l’arrêter, une
+                attente de 48 heures commence. Tu peux aussi demander l’accord d’un
+                proche de confiance.
+              </p>
+            </details>
+            <details class="faq-item reveal">
+              <summary>Déclic est-il un traitement médical&nbsp;?</summary>
+              <p>
+                Non. Déclic est un outil de blocage et de soutien. Ce n’est pas un
+                dispositif médical, ni un substitut à un accompagnement professionnel.
+              </p>
+            </details>
+            <details class="faq-item reveal">
+              <summary>Mes données de jeu restent-elles privées&nbsp;?</summary>
+              <p>
+                Les apps, catégories et sites que tu bloques restent sur ton iPhone.
+                Déclic ne vend pas tes données et ne fait pas de publicité ciblée.
+                Le détail est dans la
+                <a href="confidentialite.html">politique de confidentialité</a>.
+              </p>
+            </details>
+            <details class="faq-item reveal">
+              <summary>Quand Déclic sera-t-il disponible&nbsp;?</summary>
+              <p>
+                Déclic arrive bientôt sur l’App Store, pour iPhone. Tu peux déjà
+                ouvrir la
+                <a href="https://apps.apple.com/fr/app/id6802540340">fiche de l’app</a>
+                et t’y préparer.
+              </p>
+            </details>
+            <details class="faq-item reveal">
+              <summary>Que faire si l’envie est trop forte maintenant&nbsp;?</summary>
+              <p>
+                Joueurs Info Service répond au
+                <a href="tel:+33974751313">09 74 75 13 13</a>, tous les jours de
+                8&nbsp;h à 2&nbsp;h. En cas d’idées suicidaires, le
+                <a href="tel:3114">3114</a> répond 24&nbsp;h/24.
+              </p>
+            </details>
+          </div>
+        </div>
+      </section>
+
       <section class="final-cta">
         <div class="final-orbit" aria-hidden="true"></div>
         <div class="shell final-inner reveal">
@@ -310,6 +496,7 @@
         </div>
         <div class="help-actions">
           <a class="help-phone" href="tel:+33974751313">09 74 75 13 13</a>
+          <a class="help-alt" href="tel:3114">3114 — suicide écoute</a>
           <a href="https://www.joueurs-info-service.fr">Visiter le site <span aria-hidden="true">↗</span></a>
         </div>
       </div>

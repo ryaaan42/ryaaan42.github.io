@@ -25,7 +25,7 @@ function updateProgress() {
   const scrollableHeight = document.documentElement.scrollHeight - window.innerHeight
   const progress = scrollableHeight > 0 ? Math.min(window.scrollY / scrollableHeight, 1) : 0
 
-  timeline.style.transform = `scaleX(${progress})`
+  if (timeline) timeline.style.transform = `scaleX(${progress})`
   progressFrame = undefined
 }
 
@@ -39,3 +39,23 @@ if (timeline) {
   window.addEventListener("scroll", requestProgressUpdate, { passive: true })
   window.addEventListener("resize", requestProgressUpdate)
 }
+
+const siteNav = document.querySelector(".site-nav")
+
+if (siteNav && !document.body.classList.contains("page-inner")) {
+  const onScrollNav = () => {
+    siteNav.classList.toggle("is-stuck", window.scrollY > 18)
+  }
+
+  onScrollNav()
+  window.addEventListener("scroll", onScrollNav, { passive: true })
+}
+
+document.querySelectorAll(".faq-item").forEach((item) => {
+  item.addEventListener("toggle", () => {
+    if (!item.open) return
+    document.querySelectorAll(".faq-item").forEach((other) => {
+      if (other !== item) other.open = false
+    })
+  })
+})

@@ -1,0 +1,24 @@
+{
+  "name": "Déclic",
+  "short_name": "Déclic",
+  "description": "L’allié face au jeu, sur iPhone. Bloque les apps et sites de paris, traverse les envies, suis tes jours repris.",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "browser",
+  "background_color": "#080808",
+  "theme_color": "#080808",
+  "icons": [
+    {
+      "src": "/assets/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
