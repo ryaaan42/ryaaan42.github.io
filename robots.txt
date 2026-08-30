@@ -1,6 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /admin/
+Disallow: /stories/
 
 User-agent: GPTBot
 Allow: /
