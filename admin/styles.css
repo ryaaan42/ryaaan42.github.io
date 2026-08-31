@@ -154,6 +154,10 @@ a {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+  overflow-y: auto;
 }
 
 .side-brand {

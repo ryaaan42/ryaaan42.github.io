@@ -6,6 +6,7 @@ const STORAGE_KEY = "declic-admin-session";
 
 const SECTIONS = [
   ["overview", "Vue d’ensemble"],
+  ["notify", "Notifications"],
   ["queue", "Signalements"],
   ["explorer", "Communauté"],
   ["members", "Comptes"],
@@ -13,7 +14,6 @@ const SECTIONS = [
   ["suspensions", "Suspendus"],
   ["history", "Journal"],
   ["notice", "Annonce"],
-  ["notify", "Notifications"],
   ["domains", "Domaines"],
 ];
 
@@ -201,7 +201,7 @@ async function refreshAll() {
         rpc("suspensions"),
         rpc("history", { max_rows: 200 }),
         rpc("notice"),
-        rpc("notification_history", { max_rows: 50 }),
+        rpc("notification_history", { max_rows: 50 }).catch(() => []),
         rpc("domains"),
       ]);
     state.me = me;
@@ -784,6 +784,13 @@ function overviewView() {
         ? `<p class="muted">Le plus ancien signalement attend depuis ${escapeHtml(age(summary.oldest_pending_at))}.</p>`
         : `<p class="empty">Rien en attente. La file est vide.</p>`
     }
+    <div class="panel stack" style="margin-top:18px">
+      <h2>Notifications</h2>
+      <p class="muted">Envoie un message à un compte, ou à tout le monde. Il arrive dans l’app et sur l’écran verrouillé.</p>
+      <div class="actions">
+        <button class="btn brand" type="button" data-action="nav" data-section="notify">Ouvrir Notifications</button>
+      </div>
+    </div>
     <div class="panel" style="margin-top:18px">
       <h2>Dernières décisions</h2>
       ${
