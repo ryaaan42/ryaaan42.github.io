@@ -13,6 +13,7 @@ const SECTIONS = [
   ["suspensions", "Suspendus"],
   ["history", "Journal"],
   ["notice", "Annonce"],
+  ["notify", "Notifications"],
   ["domains", "Domaines"],
 ];
 
@@ -48,6 +49,7 @@ const state = {
   suspensions: [],
   history: [],
   notice: { body: "", updated_at: null },
+  notifications: [],
   domains: [],
   browse: [],
   browseQuery: "",
@@ -175,6 +177,8 @@ function frenchError(error) {
     rate_limit_exceeded: "Trop de tentatives. Attends un moment.",
     reason_required: "Écris un motif d’au moins trois caractères.",
     notice_too_short: "L’annonce est trop courte.",
+    notification_too_short: "Le texte est trop court (3 caractères minimum).",
+    notification_title_invalid: "Le titre doit faire entre 1 et 80 caractères.",
     invalid_domain: "Ce domaine n’est pas valide.",
     unknown_report: "Ce signalement n’existe plus.",
     unknown_target: "Cette cible n’existe plus.",
@@ -188,7 +192,7 @@ async function refreshAll() {
   state.loading = true;
   render();
   try {
-    const [me, summary, queue, held, suspensions, history, notice, domains] =
+    const [me, summary, queue, held, suspensions, history, notice, notifications, domains] =
       await Promise.all([
         api("me").then((payload) => payload.data),
         rpc("summary"),
@@ -197,6 +201,7 @@ async function refreshAll() {
         rpc("suspensions"),
         rpc("history", { max_rows: 200 }),
         rpc("notice"),
+        rpc("notification_history", { max_rows: 50 }),
         rpc("domains"),
       ]);
     state.me = me;
@@ -206,6 +211,7 @@ async function refreshAll() {
     state.suspensions = suspensions || [];
     state.history = history || [];
     state.notice = notice || { body: "", updated_at: null };
+    state.notifications = notifications || [];
     state.domains = domains || [];
     if (state.section === "explorer") await loadBrowse();
     if (state.section === "members" && (state.member?.username || state.memberQuery)) {
@@ -249,6 +255,14 @@ function onSubmit(event) {
   }
   if (form.id === "notice-form") {
     saveNotice(new FormData(form).get("body") || "");
+  }
+  if (form.id === "notify-form") {
+    const data = new FormData(form);
+    sendNotification({
+      lookup: String(data.get("lookup") || ""),
+      title: String(data.get("title") || ""),
+      body: String(data.get("body") || ""),
+    });
   }
   if (form.id === "domain-form") {
     addDomain(new FormData(form).get("domain") || "");
@@ -427,6 +441,19 @@ async function handleAction(action, node) {
       });
       return;
     }
+    if (action === "notify-member") {
+      openDialog({
+        title: `Notifier @${node.dataset.username || "ce compte"}`,
+        hint: "Ce texte apparaît sur l’écran verrouillé. Ne mentionne pas le jeu, l’argent, ni une envie.",
+        submit: "Envoyer",
+        fields: notifyFields(),
+        payload: {
+          op: "send_notification",
+          args: { lookup: node.dataset.username || node.dataset.id },
+        },
+      });
+      return;
+    }
     if (action === "close-dialog") {
       state.dialog = null;
       render();
@@ -455,10 +482,20 @@ async function confirmDialog(form) {
   if (reason) args.reason = reason;
   const days = form.get("suspend_days");
   if (days) args.suspend_days = Number(days);
+  const title = String(form.get("title") || "").trim();
+  const body = String(form.get("body") || "").trim();
+  if (dialog.payload.op === "send_notification") {
+    args.title = title;
+    args.body = body;
+  }
   state.dialog = null;
   try {
-    await rpc(dialog.payload.op, args);
-    toast("C’est enregistré.");
+    const result = await rpc(dialog.payload.op, args);
+    if (dialog.payload.op === "send_notification") {
+      toast(notifyToast(result));
+    } else {
+      toast("C’est enregistré.");
+    }
     await refreshAll();
   } catch (error) {
     state.error = frenchError(error);
@@ -494,6 +531,64 @@ async function saveNotice(body) {
     state.error = frenchError(error);
     render();
   }
+}
+
+async function sendNotification({ lookup, title, body }) {
+  const needle = String(lookup || "").trim();
+  if (!needle) {
+    const ok = window.confirm(
+      "Envoyer ce message à toutes les personnes qui ont l’app ?",
+    );
+    if (!ok) return;
+  }
+  try {
+    const result = await rpc("send_notification", {
+      lookup: String(lookup || "").trim(),
+      title: String(title || "").trim(),
+      body: String(body || "").trim(),
+    });
+    toast(notifyToast(result));
+    await refreshAll();
+  } catch (error) {
+    state.error = frenchError(error);
+    render();
+  }
+}
+
+function notifyToast(result) {
+  const recipients = Number(result?.recipient_count || 0);
+  const delivered = Number(result?.delivered || 0);
+  if (result?.skipped === "not_configured") {
+    return recipients === 1
+      ? "Message déposé dans l’app. Le push distant n’est pas encore configuré."
+      : `Message déposé chez ${recipients} personnes. Le push distant n’est pas encore configuré.`;
+  }
+  if (delivered > 0) {
+    return delivered === 1
+      ? "Notification envoyée."
+      : `Notification envoyée à ${delivered} téléphone(s).`;
+  }
+  return recipients === 1
+    ? "Message déposé dans l’app."
+    : `Message déposé chez ${recipients} personnes.`;
+}
+
+function notifyFields() {
+  return [
+    {
+      name: "title",
+      label: "Titre",
+      type: "text",
+      placeholder: "Déclic",
+      value: "Déclic",
+    },
+    {
+      name: "body",
+      label: "Message",
+      type: "textarea",
+      placeholder: "Pense à ouvrir l’app aujourd’hui.",
+    },
+  ];
 }
 
 async function addDomain(domain) {
@@ -667,6 +762,8 @@ function sectionView() {
       return historyView();
     case "notice":
       return noticeView();
+    case "notify":
+      return notifyView();
     case "domains":
       return domainsView();
     default:
@@ -937,6 +1034,7 @@ function memberCard(card) {
         <button class="btn" data-action="act" data-kind="user" data-id="${card.user_id}" data-op="warn" data-warnings="${warnings}" data-submit="Avertir">${
           warnings >= 1 ? "Avertir encore" : "Avertir"
         }</button>
+        <button class="btn" data-action="notify-member" data-id="${card.user_id}" data-username="${escapeHtml(card.username || "")}">Notifier</button>
         <button class="btn danger" data-action="act" data-kind="user" data-id="${card.user_id}" data-op="suspend" data-extra="suspend" data-submit="Suspendre" data-danger="true">Suspendre</button>
         ${
           locked
@@ -1009,6 +1107,43 @@ function noticeView() {
   `;
 }
 
+function notifyView() {
+  const rows = state.notifications || [];
+  return `
+    <form class="panel stack" id="notify-form">
+      <p class="muted">Le texte apparaît sur l’écran verrouillé. Ne mentionne pas le jeu, l’argent, ni une envie. Vide le champ @ pour tout le monde.</p>
+      <label class="muted">Destinataire<input class="field" name="lookup" placeholder="@username — vide = tout le monde" /></label>
+      <label class="muted">Titre<input class="field" name="title" maxlength="80" value="Déclic" required /></label>
+      <label class="muted">Message<textarea class="field" name="body" rows="4" maxlength="280" placeholder="Pense à ouvrir l’app aujourd’hui." required></textarea></label>
+      <div class="actions">
+        <button class="btn brand" type="submit">Envoyer</button>
+      </div>
+    </form>
+    <div class="panel" style="margin-top:18px">
+      <h2>Derniers envois</h2>
+      ${
+        rows.map((row) => `
+          <div class="row">
+            <div>
+              <strong>${escapeHtml(row.title)}</strong>
+              <div>${escapeHtml(row.body)}</div>
+              <div class="meta">${
+                row.audience === "all"
+                  ? "Tout le monde"
+                  : row.target_username
+                    ? `@${escapeHtml(row.target_username)}`
+                    : "Un compte"
+              } · ${row.recipient_count || 0} destinataire(s) · ${escapeHtml(age(row.created_at))}${
+                row.moderator_username ? ` · @${escapeHtml(row.moderator_username)}` : ""
+              }</div>
+            </div>
+          </div>
+        `).join("") || `<p class="empty">Aucun envoi pour l’instant.</p>`
+      }
+    </div>
+  `;
+}
+
 function domainsView() {
   const rows = state.domains.filter((row) => matchesQuery(row.domain));
   return `
@@ -1043,10 +1178,15 @@ function dialogView() {
       <form class="dialog stack" id="dialog-form">
         <h2>${escapeHtml(dialog.title)}</h2>
         ${dialog.hint ? `<p class="warn">${escapeHtml(dialog.hint)}</p>` : ""}
-        ${dialog.fields.map((field) => field.type === "number"
-          ? `<label class="muted">${escapeHtml(field.label)}<input class="field" type="number" min="1" max="365" name="${field.name}" value="${field.value || ""}" required /></label>`
-          : `<label class="muted">${escapeHtml(field.label)}<textarea class="field" name="${field.name}" rows="3" placeholder="${escapeHtml(field.placeholder || "")}" required></textarea></label>`
-        ).join("")}
+        ${dialog.fields.map((field) => {
+          if (field.type === "number") {
+            return `<label class="muted">${escapeHtml(field.label)}<input class="field" type="number" min="1" max="365" name="${field.name}" value="${field.value || ""}" required /></label>`;
+          }
+          if (field.type === "text") {
+            return `<label class="muted">${escapeHtml(field.label)}<input class="field" type="text" name="${field.name}" maxlength="80" value="${escapeHtml(field.value || "")}" placeholder="${escapeHtml(field.placeholder || "")}" required /></label>`;
+          }
+          return `<label class="muted">${escapeHtml(field.label)}<textarea class="field" name="${field.name}" rows="3" placeholder="${escapeHtml(field.placeholder || "")}" required></textarea></label>`;
+        }).join("")}
         <div class="actions">
           <button class="btn ${dialog.danger ? "danger" : "brand"}" type="submit">${escapeHtml(dialog.submit)}</button>
           <button class="btn" type="button" data-action="close-dialog">Annuler</button>
