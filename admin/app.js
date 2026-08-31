@@ -558,19 +558,26 @@ async function sendNotification({ lookup, title, body }) {
 function notifyToast(result) {
   const recipients = Number(result?.recipient_count || 0);
   const delivered = Number(result?.delivered || 0);
+  const failed = Number(result?.failed || 0);
   if (result?.skipped === "not_configured") {
     return recipients === 1
       ? "Message déposé dans l’app. Le push distant n’est pas encore configuré."
       : `Message déposé chez ${recipients} personnes. Le push distant n’est pas encore configuré.`;
   }
+  if (result?.skipped === "invalid_key") {
+    return "Message déposé dans l’app. La clé Apple du serveur est illisible.";
+  }
   if (delivered > 0) {
     return delivered === 1
-      ? "Notification envoyée."
+      ? "Notification envoyée. Vérifie l’écran verrouillé."
       : `Notification envoyée à ${delivered} téléphone(s).`;
   }
+  if (failed > 0) {
+    return "Message déposé dans l’app, mais Apple a refusé le push. Vérifie que Déclic a le droit Notifications dans Réglages.";
+  }
   return recipients === 1
-    ? "Message déposé dans l’app."
-    : `Message déposé chez ${recipients} personnes.`;
+    ? "Message déposé dans l’app. Aucun téléphone n’a de jeton push."
+    : `Message déposé chez ${recipients} personnes. Aucun téléphone n’a de jeton push.`;
 }
 
 function notifyFields() {
