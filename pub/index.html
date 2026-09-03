@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Déclic — la pub</title>
+    <title>Déclic — les pubs</title>
     <meta name="theme-color" content="#0A0A0B" />
     <meta name="robots" content="noindex, nofollow" />
     <link rel="canonical" href="https://declicapp.fr/pub/" />
@@ -26,9 +26,16 @@
       }
       h1 { margin: 8px 0 6px; font-size: 28px; letter-spacing: -0.04em; }
       .note { margin: 0 0 20px; color: #8a8a8e; font-size: 15px; line-height: 1.4; }
+      section { margin: 0 auto 28px; max-width: 420px; }
+      h2 {
+        margin: 0 0 10px;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #ffd600;
+      }
       .frame {
-        margin: 0 auto;
-        max-width: 420px;
         border-radius: 22px;
         overflow: hidden;
         background: #111;
@@ -45,7 +52,7 @@
         display: flex;
         gap: 12px;
         flex-wrap: wrap;
-        margin: 22px auto 0;
+        margin: 8px auto 0;
         max-width: 420px;
       }
       nav a {
@@ -66,24 +73,42 @@
   <body>
     <header>
       <p>Déclic</p>
-      <h1>La pub</h1>
-      <p class="note">11 secondes. Tu peux lancer le son toi-même, il n’y en a pas.</p>
+      <h1>Les pubs</h1>
+      <p class="note">Deux spots de 8 secondes, avec les vrais visuels App Store. Pas de son.</p>
     </header>
-    <div class="frame">
-      <video
-        controls
-        playsinline
-        webkit-playsinline
-        muted
-        autoplay
-        loop
-        preload="auto"
-        src="./declic-ferme-la-porte.mp4"
-      >
-        Ta vidéo est là :
-        <a href="./declic-ferme-la-porte.mp4">ouvrir le fichier</a>
-      </video>
-    </div>
+    <section>
+      <h2>1 · Reprends le contrôle</h2>
+      <div class="frame">
+        <video
+          controls
+          playsinline
+          webkit-playsinline
+          muted
+          autoplay
+          loop
+          preload="auto"
+          src="./declic-controle.mp4"
+        >
+          <a href="./declic-controle.mp4">ouvrir le fichier</a>
+        </video>
+      </div>
+    </section>
+    <section>
+      <h2>2 · 48 h d’attente</h2>
+      <div class="frame">
+        <video
+          controls
+          playsinline
+          webkit-playsinline
+          muted
+          loop
+          preload="metadata"
+          src="./declic-48h.mp4"
+        >
+          <a href="./declic-48h.mp4">ouvrir le fichier</a>
+        </video>
+      </div>
+    </section>
     <nav>
       <a class="store" href="https://apps.apple.com/fr/app/id6802540340">App Store</a>
       <a class="back" href="/">Retour au site</a>
